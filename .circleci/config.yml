@@ -71,7 +71,7 @@ jobs:
 
 
 workflows:
-  use-my-orb:
+  BUILD-TEST:
     jobs:
       - build
       - cypress-install-and-persist:
