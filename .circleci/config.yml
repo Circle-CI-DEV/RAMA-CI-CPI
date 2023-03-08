@@ -2,6 +2,7 @@ version: 2.1
 
 orbs:
   python: circleci/python@1.2.1
+  cypress: cypress-io/cypress@3.0.0
 
 jobs:
   build:
