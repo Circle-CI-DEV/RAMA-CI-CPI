@@ -51,10 +51,41 @@ jobs:
           command: |
             source venv/bin/activate
             python manage.py runserver 127.0.0.1:8000 &
-            
-      
+  cypress-install-and-persist:
+    executor: cypress/default
+    steps:
+      - cypress/install
+      - persist_to_workspace:
+          paths:
+            - .cache/Cypress
+            - project
+          root: ~/
+  cypress-run-tests-in-parallel:
+    executor: cypress/default
+    parallelism: 8
+    steps:
+      - attach_workspace:
+          at: ~/
+      - cypress/run-tests:
+          cypress-command: npx cypress run --component --parallel --record
+
 
 workflows:
-  build:
+  use-my-orb:
     jobs:
       - build
+      - cypress-install-and-persist:
+          name: Install & Persist To Workspace
+          requires:
+            - build
+      - cypress-run-tests-in-parallel:
+          name: Run Tests in Parallel
+          requires:
+            - Install & Persist To Workspace
+  
+
+
+
+
+  
+  
