@@ -71,7 +71,7 @@ jobs:
 
 
 workflows:
-  BUILD-TEST:
+  BUILD_TEST_JOB:
     jobs:
       - build
       - cypress-install-and-persist:
