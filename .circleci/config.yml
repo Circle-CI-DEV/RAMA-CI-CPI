@@ -75,8 +75,8 @@ jobs:
             python manage.py runserver & sleep 5
   test:
     docker:
-      - image: cypress/base:12
-      - image: circleci/postgres:11.5-alpine-ram
+      - image: cypress/base:16
+      - image: circleci/postgres:13.4-alpine
         environment:
           POSTGRES_USER: $POSTGRES_USER
           POSTGRES_PASSWORD: $POSTGRES_PASSWORD
