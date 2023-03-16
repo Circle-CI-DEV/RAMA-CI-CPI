@@ -85,8 +85,8 @@ jobs:
       - checkout
       - run: |
           sudo apt-get update
-          sudo apt-get -y install postgresql-client
-          sudo apt-get -y install chromium-browser
+          sudo apt-get install -y postgresql-client
+          sudo apt-get install -y chromium-browser
       - run:
           name: Run Cypress Tests
           command: |
