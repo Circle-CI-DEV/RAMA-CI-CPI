@@ -2,12 +2,12 @@ version: 2.1
 
 orbs:
   python: circleci/python@1.2.1
-  cypress: cypress-io/cypress@3.0.0
+
 
 jobs:
   build:
     docker:
-      - image: cimg/python:3.10
+      - image: circleci/python:3.8
       - image: postgres:14.1
         environment:
           POSTGRES_USER: $POSTGRES_USER
@@ -15,11 +15,30 @@ jobs:
           POSTGRES_DB: $POSTGRES_DB  
     steps:
       - checkout
+      - run: 
+          name: Install AWS CLI
+          command: |
+            sudo mkdir -p /PostgresDump
+            sudo chmod 777 /PostgresDump
+            ls -l / 
+            sudo apt-get update
+            sudo apt-get install -y awscli
+            aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID}
+            aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY}
+            aws configure set default.region us-east-2
+            aws s3 cp s3://uno-isqa-8950-cpi/PostgresDump/db_cpi_local.sql /PostgresDump
       - run:
           name: Install system dependencies
           command: |
             sudo apt-get update
-            sudo apt-get install -y libxmlsec1-dev libxml2-dev libxslt1-dev xmlsec1
+            sudo apt-get install -y postgresql-client libxmlsec1-dev libxml2-dev libxslt1-dev xmlsec1
+          environment:
+            LC_ALL: C.UTF-8
+            LANG: C.UTF-8
+      - run:
+          name: Restore database from dump file
+          command: | 
+            psql -U '$POSTGRES_USER' -d '$POSTGRES_DB' -h localhost < /PostgresDump/db_cpi_local.sql   
           environment:
             LC_ALL: C.UTF-8
             LANG: C.UTF-8
@@ -33,59 +52,57 @@ jobs:
             pip install Django
           environment:
             LC_ALL: C.UTF-8
-            LANG: C.UTF-8   
+            LANG: C.UTF-8
+      
       - run:
           name: Migrate database
           command: |
             source venv/bin/activate
             export DATABASE_URL=postgresql://'$POSTGRES_USER':'$POSTGRES_PASSWORD'@localhost/'$POSTGRES_DB'
+            python manage.py makemigrations
             python manage.py migrate --noinput
-            
+            python manage.py createsuperuser --email=myuser@gmail.com --noinput      
       - run:
           name: Collect Static Files
           command: |
             source venv/bin/activate
+            export GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY
             python manage.py collectstatic --noinput
       - run:
-          name: Start and test application
+          name: Run Server
           command: |
             source venv/bin/activate
-            python manage.py runserver 127.0.0.1:8000 &
-  cypress-install-and-persist:
-    executor: cypress/default
+            python manage.py runserver & sleep 5
+  test:
+    docker:
+      - image: cypress/base:12
+      - image: circleci/postgres:11.5-alpine-ram
+        environment:
+          POSTGRES_USER: $POSTGRES_USER
+          POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+          POSTGRES_DB: $POSTGRES_DB 
     steps:
-      - cypress/install
-      - persist_to_workspace:
-          paths:
-            - .cache/Cypress
-            - project
-          root: ~/
-  cypress-run-tests-in-parallel:
-    executor: cypress/default
-    parallelism: 3
-    steps:
-      - attach_workspace:
-          at: ~/
-      - cypress/run-tests:
-          cypress-command: npx cypress run --component --parallel --record
-
-
+      - checkout
+      - run: |
+          sudo apt-get update
+          sudo apt-get -y install postgresql-client
+          sudo apt-get -y install chromium-browser
+      - run:
+          name: Run Cypress Tests
+          command: |
+            npx cypress run --config baseUrl=http://127.0.0.1:8000 --spec cypress/integration/**/*.spec.js
+            
+      
 workflows:
-  BUILD_TEST_JOB:
+  version: 2
+  build-and-test:
     jobs:
-      - build
-      - cypress-install-and-persist:
-          name: Install & Persist To Workspace
+      - build:
+          filters:
+            branches:
+              only: main
+      - test:
           requires:
             - build
-      - cypress-run-tests-in-parallel:
-          name: Run Tests in Parallel
-          requires:
-            - Install & Persist To Workspace
-  
+      
 
-
-
-
-  
-  
