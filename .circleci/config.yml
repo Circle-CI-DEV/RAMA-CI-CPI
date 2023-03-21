@@ -78,7 +78,7 @@ jobs:
       - run:   
           name: Test Server
           command: |
-            curl -k -v http://localhost:8000/
+            curl -k -v http://127.0.0.1:8000/
   test:
     docker:
       - image: cypress/base:14.17.0
